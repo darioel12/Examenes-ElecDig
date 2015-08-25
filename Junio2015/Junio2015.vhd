@@ -43,7 +43,7 @@ architecture Behavioral of Junio2015 is
 --CIRCUITOS AUXILIARES--
 	type lut is array (0 downto 5) of signed (7 downto 0);
 	signal dec_lut : lut:=(-4,32,72,32,-4);
-	signal x1,x2 : signed (15 downto 0);
+	signal x2,x3 : signed (15 downto 0);
 	signal acu_reg: std_logic_vector(15 downto 0);
 	
 --DATOS (REGISTRO DESPLAZAMIENTO P/P)--
@@ -65,26 +65,26 @@ begin
 	--proceso secuencial--
 	process(CLK,RST)
 	begin
-	if(RST='1') then x3<="0000000000000000";
+	if(RST='1') then x3<=to_unsigned (0,16);
 	elsif (CLK'event and CLK='1') then x3<=x2;
 	end if;
 	end process;
 	
 	--proceso combinacional--
-	x2<=unsigned (x1+(X*dec_lut)) when x_valido='0' else "0000000000000000";
+	x2<= x3+(signed(X)*dec_lut(to_integer(cnt)));
 	
---DATOS (RESGISTRO DESPLAZAMIENTO P/P)--
-	x2<=q;
+--DATOS (RESGISTRO CARGA P/P)--
+	acu_reg<=q;
 	--proceso secuencial--
 	process(CLK,RST)
 	begin
-	if (RST='1') then q<="0000000000000000";
+	if (RST='1') then q<= to_unsigned(0,16);
 	elsif(CLK'event and CLK='1') then q<=nq;
 	end if;
 	end process;
 	
 	--proceso combinacional--
-	nq<=acu_reg when ld_dato='1' else q;
+	nq<=x3 when ld_dato='1' else q;
 	
 	S<=acu_reg(14 downto 7);
 	
@@ -110,34 +110,28 @@ begin
 	end process;
 	
 	--proceso combinacional--
-	process(p_state,n_cnt,s_hab)
+	process(p_state,cnt,s_hab)
 	begin
+	x_valido<='0';
+	ocupado<='0';
+	ld_dato<='0';
+	ini_cnt<='0';
+	n_state<=p_state;
 	case p_state is
 		when reposo =>
-		x_valido<='0';
-		ocupado<='0';
-		ld_dato<='0';
-		ini_cnt<='0';
 		if(s_hab='1') then n_state<=ocupado;
 		end if;
 		when ocupado =>
 		ocupado<='1';
 		x_valido<='1';
 		ini_cnt<='1';
-		ld_dato<='0';
-		if(n_cnt=4) then n_state<=salida;
+		if(cnt=4) then n_state<=salida;
 		end if;
 		when salida=>
-		ocupado<='0';
-		x_valido<='0';
 		ld_dato<='1';
-		ini_cnt<='0';
 		if(s_hab='0') then n_state<=reposo;
 		end if;
 	end case;
 	end process;
-
-	
-	
 end Behavioral;
 
