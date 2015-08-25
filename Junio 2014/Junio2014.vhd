@@ -41,42 +41,57 @@ end Junio2014;
 
 architecture Behavioral of Junio2014 is
 
---registro desplazamiento--
+--registro carga paralelo I--
 	signal q,nq : std_logic_vector(9 downto 0);
 	signal ld_dato: std_logic;
---contador modulo 999--
+--registro carga paralelo II--
+	signal q2,nq2 : std_logic_vector(9 downto 0);
+	signal ld_dato2: std_logic;
+--contador descendente modulo 999--
 	signal cnt,n_cnt: unsigned(9 downto 0);
 	signal ini_cnt: std_logic;
 --MEF--
-	type states is (reposo,activa,perN,espera,captura);
+	type states is (reposo,pwm_0,pwm_1);
 	signal n_state,p_state: states;
-	signal wt: std_logic;
 
 begin
 
---REGISTRO DESPLAZAMIENTO P/P--
+--REGISTRO CARGA PARALELO-- 
 	--proceso secuencial--
 	process(CLK,RST)
 	begin 
-	if(RST='1') then q<="0000000000";
+	if(RST='1') then q<=to_unsigned(0,10);
 	elsif(CLK'event and CLK='1') then q<=nq;
 	end if;
 	end process;
 	--proceso combinacional--
-	nq<=D when ld_dato='1' else q;
+	nq<=D when D_VALID='1' else q;
 	
-	PWM<= nq(9 downto 1);
+--	PWM<= nq(9 downto 1);
+
+--REGISTRO CARGA P/P(II)--
+	--proceso secuencial--
+	process(CLK,RST)
+	begin 
+	if(RST='1') then q2<=to_unsigned(0,10);
+	elsif(CLK'event and CLK='1') then q2<=nq2;
+	end if;
+	end process;
+	--proceso combinacional--
+	nq2<=pq when ld_dato2='1' else q2;
 	
---CONTADOR MODULO 999--
+--CONTADOR DESCENDENTE MODULO 999 (10 BITS) --
 	--proceso secuencial--
 	process(CLK,RST)
 	begin
-	if(RST='1') then cnt<="0000000000";
+	if(RST='1') then cnt<=to_unsigned(998,10);
 	elsif (CLK'event and CLK='1') then cnt<=n_cnt;
 	end if;
 	end process;
 	--proceso combinacional--
-	n_cnt<= cnt+1 when cnt<999 or ini_cnt='1' else "0000000000";
+	n_cnt<= cnt-1 when cnt>=0 or ini_cnt='1' else to_unsigned(998,10);
+	
+	PWM<='1' when (cnt<q2) and ON_OFF<='1' else '0';
 	
 --MEF--
 	--proceso secuencial--
@@ -87,44 +102,30 @@ begin
 	end if;
 	end process;
 	--proceso combinacional--
-	process(ON_OFF,n_cnt,wt)
+	process(ON_OFF,cnt)
 	begin 
 	n_state<=p_state;
+	PER_N<='0';
+	ini_cnt<='0';
+	D_VALID<='0';
+	ld_dato2<='0';
+	PWM<='0';
+	PER_N<='0';
 		case p_state is
 			when reposo =>
-			ld_dato<='0';
-			PER_N<='0';
-			ini_cnt<='0';
-			D_VALID<='0';
-			if(ON_OFF='1') then n_state<=activa;
+			if(ON_OFF='1') then n_state<=pwm_0;
 			end if;
-			when activa =>
+			when pwm_0 =>
 			ini_cnt<='1';
-			ld_dato<='0';
-			PER_N<='0';
-			D_VALID<='0';
-			if(n_cnt=998) then n_state<=perN;
-			end if;
-			when perN =>
-			PER_N<='1';
-			ini_cnt<='0';
-			ld_dato<='0';
-			D_valid<='0';
-			if(wt='1') then n_state<=espera;
-			end if;
-			when espera =>
-			ld_dato<='0';
-			PER_N<='0';
-			ini_cnt<='1';
-			D_VALID<='0';
-			if(n_cnt=998) then n_state<=captura;
-			end if;
-			when captura =>
-			ld_dato<='1';
 			D_VALID<='1';
-			PER_N<='0';
-			ini_cnt<='0';
-			if(ON_OFF='0') then n_state<=reposo;
+			ld_dato<='1';
+			PER_N<='1';
+			if(cnt=to_unsigned(q2)) then n_state<=pwm_1;
+			end if;
+			when pwm_1 =>
+			PWM<='1';
+			if(ON_OFF='0' and cnt=to_unsigned(998,10)) then n_state<=reposo;
+			elsif(ON_OFF='1' and cnt=to_unsigned(998,10)) then n_state<=pwm_0;
 			end if;
 		end case;
 	end process;
