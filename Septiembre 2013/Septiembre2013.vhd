@@ -39,13 +39,14 @@ end Septiembre2013;
 
 architecture Behavioral of Septiembre2013 is
 --registro desplazamiento--
-signal nq,pq : std_logic_vector(7 downto 0);
+signal nq,q,D_reg : std_logic_vector(7 downto 0);
 signal ld_dato: std_logic;
 --contador módulo 444500--
 signal cnt,n_cnt: unsigned(15 downto 0);
 signal ini_cnt: std_logic;
 --contador modulo 4--
 signal cnt_4,n_cnt_4: unsigned(2 downto 0);
+signal ini_cnt_4: std_logic;
 --mef--
 type states is (reposo,start,b7,b6,b5,b4,b3,b2,b1,b0);
 signal n_state,p_state : states;
@@ -56,23 +57,24 @@ begin
 	--proceso secuencial--
 	process(CLK,RST)
 	begin
-	if(RST='1') then pq<="00000000";
-	elsif (CLK'event and CLK='1') then pq<=nq;
+	if(RST='1') then q<=to_unsigned(0,8);
+	elsif (CLK'event and CLK='1') then q<=nq;
 	end if;
 	end process;
 	--proceso combinacional--
-	nq<=D when ld_dato='1' else pq;
+	nq<= '0'&'1'&'0'&'1'&(not DIN(7))&DIN(7)&(not DIN(6))&DIN(6)&(not DIN(5))&DIN(5)&DIN(4)&(not DIN(4))&DIN(3)&(not DIN(3))&(not DIN(2))&DIN(2)&(not DIN(1))&DIN(1)&(not DIN(0))&DIN(0) when ld_dato='1' else q;
+	D_reg<=q;
 	
 --CONTADOR MODULO 44450--
 	--proceso secuencial--
 	process(CLK,RST)
 	begin
-	if(RST='1') then cnt<=0;
+	if(RST='1') then cnt<=to_unsigned (0,16);
 	elsif (CLK'event and CLK='1') then cnt<=n_cnt;
 	end if;
 	end process;
 	--proceso combinacional--
-	n_cnt<=cnt+1 when cnt<44450 or ini_cnt='1' else 0;
+	n_cnt<=cnt+1 when cnt<44450 or ini_cnt='1' else to_unsigned(0,16);
 	
 --CONTADOR MODULO 4--
 	--proceso secuencial--
@@ -83,7 +85,9 @@ begin
 	end if;
 	end process;
 	--proceso combinacional--
-	n_cnt_4<=cnt_4+1 when cnt<4 or cnt=44449 else 0;
+	n_cnt_4<=cnt_4+1 when cnt_4<4 or ini_cnt_4='1' else 0;
+	
+	ini_cnt_4<='1' when cnt=44449 else 0;
 	
 --MEF--
 	--proceso secuencial--
@@ -94,66 +98,58 @@ begin
 	end if;
 	end process;
 	--proceso combinacional--
-	process(n_cnt_4,D_VALID,p_state)
+	process(cnt_4,D_VALID,p_state)
 	begin
+	SERIAL_OUT<='0';
+	ini_cnt<='1';
+	n_state<=p_state;
 	case p_state is
 		when reposo =>
-		SERIAL_OUT<='0';
 		ini_cnt<='0';
 		if(D_VALID='1') then n_state<=start;
 		end if;
 		
 		when start =>
-		SERIAL_OUT<='0';
-		ini_cnt<='1';
-		if(n_cnt_4=3) then n_state<=b7;
+		if(cnt_4=3) then n_state<=b7;
 		end if;
 		
 		when b7 =>
-		SERIAL_OUT<=nq(7);
-		ini_cnt<='1';
-		if(n_cnt_4=1) then n_state<=b6;
+		SERIAL_OUT<=D_reg(7);
+		if(cnt_4=1) then n_state<=b6;
 		end if;
 		
 		when b6 =>
-		SERIAL_OUT<=nq(6);
-		ini_cnt<='1';
-		if(n_cnt_4=1) then n_state<=b5;
+		SERIAL_OUT<=D_reg(6);
+		if(cnt_4=1) then n_state<=b5;
 		end if;
 		
 		when b5 =>
-		SERIAL_OUT<=nq(5);
-		ini_cnt<='1';
-		if(n_cnt_4=1) then n_state<=b4;
+		SERIAL_OUT<=D_reg(5);
+		if(cnt_4=1) then n_state<=b4;
 		end if;
 		
 		when b4 =>
-		SERIAL_OUT<=nq(4);
-		ini_cnt<='1';
-		if(n_cnt_4=1) then n_state<=b3;
+		SERIAL_OUT<=D_reg(4);
+		if(cnt_4=1) then n_state<=b3;
 		end if;
 		
 		when b3 =>
-		SERIAL_OUT<=nq(3);
-		ini_cnt<='1';
-		if(n_cnt_4=1) then n_state<=b2;
+		SERIAL_OUT<=D_reg(3);
+		if(cnt_4=1) then n_state<=b2;
 		end if;
 		
 		when b2 =>
-		SERIAL_OUT<=nq(2);
-		ini_cnt<='1';
-		if(n_cnt_4=1) then n_state<=b1;
+		SERIAL_OUT<=D_reg(2);
+		if(cnt_4=1) then n_state<=b1;
 		end if;
 		
 		when b1 =>
-		SERIAL_OUT<=nq(1);
-		ini_cnt<='1';
-		if(n_cnt_4=1) then n_state<=b0;
+		SERIAL_OUT<=D_reg(1);
+		if(cnt_4=1) then n_state<=b0;
 		end if;
 		
 		when b0 =>
-		SERIAL_OUT<=nq(0);
-		ini_cnt<='1';
+		SERIAL_OUT<=D_reg(0);
 		if(D_VALID='0') then n_state<=reposo;
 		end if;
 		
