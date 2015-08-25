@@ -73,13 +73,13 @@ begin
 	--proceso secuencial--
 	process(CLK,RST)
 	begin
-	if(RST='1') then cnt<="00000000000000000000";
+	if(RST='1') then cnt<= unsigned (0,20);
 	elsif (CLK'event and CLK='1') then cnt<=n_cnt;
 	end if;
 	end process;
 	
 	--proceso combinacional--
-	n_cnt<=cnt+1 when cnt<1000000 or ini_cnt='1' else "00000000000000000000";
+	n_cnt<=cnt+1 when cnt<1000000 or ini_cnt='1' else unsigned (0,20);
 	
 --CONTADOR MODULO 3--
 	--proceso secuencial--
@@ -91,7 +91,7 @@ begin
 	end process;
 	
 	--proceso combinacional--
-	n_cnt_3<=cnt_3+1 when cnt_3<3 else "00";
+	n_cnt_3<=cnt_3+1 when cnt_3<3 or ini_cnt_3='1' else "00";
 
 
 --MEF--
@@ -104,40 +104,32 @@ begin
 	end process;
 	
 	--proceso combinacional--
-	process(p_state,RST,t_ini,ACK_2)
+	process(cnt,cnt_3,p_state,t_ini,ACK_2)
 	begin
+	libre<='0';
+	RPT<='0';
+	error<='0';
+	ini_cnt<='0';
+	ini_cnt_3<='0';
+	n_state<=p_state;
 	case p_state is
 		when reposo =>
-			libre<='1';
-			RPT<='0';
-			error<='0';
-			ini_cnt<='0';
-			ini_cnt_3<='0';
+		libre<='1';
 			if(t_ini='1') then n_state<=espera;
 			end if;
 		when espera=>
-			libre<='0';
-			RPT<='0';
-			error<='0';
 			ini_cnt<='1';
-			ini_cnt_3<='0';
 			if(ACK_2='1') then n_state<=reposo;
-			elsif(n_cnt=999999) then n_state<=repite;
+			elsif(cnt=999999) then n_state<=repite;
 			end if;
 		when repite=>
-			libre<='0';
 			RPT<='1';
 			ini_cnt_3<='1';
-			error<='0';
-			ini_cnt<='0';
-			if(n_cnt_3=2) then n_state<=error;
+			if(cnt_3=2) then n_state<=error;
+			elsif(t_ini='1') then n_state<=espera;
 			end if;
 		when error=>
-			libre<='0';
-			ini_cnt<='0';
-			ini_cnt_3<='0';
 			error<='1';
-			RPT<='0';
 			if(t_ini='0') then n_state<=reposo;
 			end if;
 		end case;
