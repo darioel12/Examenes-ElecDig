@@ -74,7 +74,6 @@ begin
 	x2<= x3+(signed(X)*dec_lut(to_integer(cnt)));
 	
 --DATOS (RESGISTRO CARGA P/P)--
-	acu_reg<=q;
 	--proceso secuencial--
 	process(CLK,RST)
 	begin
@@ -85,6 +84,8 @@ begin
 	
 	--proceso combinacional--
 	nq<=x3 when ld_dato='1' else q;
+	
+	acu_reg<=q;
 	
 	S<=acu_reg(14 downto 7);
 	
